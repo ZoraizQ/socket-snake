@@ -6,7 +6,7 @@ from _thread import *
 import threading
 
 #print_lock = threading.Lock()
-list_of_bodystr = ['','']
+list_of_bodystr = ["",""]
 
 class Snake_Tracker():
     def __init__(self):
@@ -109,6 +109,7 @@ def threaded(client_sock, client_id):
 
         if snake_tracker.update_body(direction) == False:
             print("Snake %i has collided." % snake_tracker.get_id())
+            list_of_bodystr[client_id-1] = ""
             running = False
         '''
         1024 - buffer size (data to recv from client socket at a time)
@@ -116,19 +117,17 @@ def threaded(client_sock, client_id):
         We decode the bytestring recieved into text string with utf-8 encoding.
         '''
         #client_id-1
-        '''
-        list_of_bodystr[0] = snake_tracker.get_body_str() # "30,40|20,10|30,90"
-        
+        list_of_bodystr[client_id-1] = snake_tracker.get_body_str() # "30,40|20,10|30,90"
+        print(list_of_bodystr)
+
         new_str = ""
         #["30,40|20,10|30,90", "30,40|20,10|30,90"]
         
         for b_str in list_of_bodystr:
             new_str += b_str + '-'
-        return new_str[:-1]
-        
-        print("sending", new_str)
-        '''
-        client_sock.send(snake_tracker.get_body_str().encode('utf-8')) # send data in a packet to a the clients socket
+        new_str = new_str[:-1]
+     
+        client_sock.send(new_str.encode('utf-8')) # send data in a packet to a the clients socket
 
     #print_lock.release()
     client_sock.close()

@@ -111,15 +111,14 @@ def main():
         list_of_bodystr = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
 
 
-        #updated_body_lists = list_of_bodystr.split('-') #"1,2|3,3|4,3-"
+        updated_body_lists = list_of_bodystr.split('-') #"1,2|3,3|4,3-"
 
-        #print("updated:",updated_body_lists)
-
-        #print("Recieved data from server: ", updated_body_lists)
+        print("Recieved data from server: ", updated_body_lists)
 
         window.blit(bg, (0, 0))
-        #for i in range(len(updated_body_lists)):
-        snake.blit_body(list_of_bodystr, window)
+        for i in range(len(updated_body_lists)):
+            if updated_body_lists[i] != "":
+                snake.blit_body(updated_body_lists[i], window)
 
         pygame.display.update()  # update screen
 
