@@ -24,6 +24,10 @@ class Snake(pygame.sprite.Sprite): # Snake is extended class of Sprite
         head_rect.x = int(new_body[0][0])            
         head_rect.y = int(new_body[0][1])
 
+        # checking for head going out of bounds, to change graphic color
+        if head_rect.x <= 0 or (head_rect.x+10) > 500 or head_rect.y <= 0 or (head_rect.y+10) > 500 or new_body[0] in new_body[1:]:
+            self.edit_graphics('graphics/part2.png','graphics/part2.png')
+            
         wind.blit(self.head_image, head_rect)
         # blitting parts
         for i in range(1, len(new_body)):
@@ -32,7 +36,8 @@ class Snake(pygame.sprite.Sprite): # Snake is extended class of Sprite
             part_rect.y = int(new_body[i][1])
             wind.blit(self.part_image, part_rect)
             # to blit the snake itself onto the window provided
-   
+
+           
     # setter, getters for id
     def set_id(self, new_id):
         self.id = new_id

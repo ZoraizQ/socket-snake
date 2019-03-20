@@ -13,7 +13,7 @@ class Snake_Tracker():
         self.body = []
         self.body.append([head_x,head_y])
 
-        for i in range(1,50):
+        for i in range(1,5):
             self.body.append([head_x-10*i,head_y])
         
         self.ms = 10 # movespeed
@@ -50,9 +50,6 @@ class Snake_Tracker():
                 prev_part_x = temp_x 
                 prev_part_y = temp_y
                 
-
-            
-
         # updating head
         if direction == 4:
             self.body[0][0] -= self.ms
