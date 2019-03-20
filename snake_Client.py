@@ -65,20 +65,23 @@ def main():
     # render/blit background image on window
     window.blit(bg, (0, 0)) # block information transfer, render surface onto another surface
     
-    server_ip = '127.0.0.1'  # host server's ip
+    server_ip = "127.0.0.1"  # host server's ip
     server_port = 5004  # server's port
 
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_sock.connect((server_ip, server_port))  # TCP - from the client side, we CONNECT to the given host and port
     # our client's port is decided arbitrarily by our computer e.g. 5192
     
-    snake1 = Snake()
-    snake1.set_id(1)
+    client_id = int(client_sock.recv(1024).decode('utf-8')) # recv from server
+
+    snake = Snake()
+    snake.set_id(client_id)
     
+
     direction = 3
     running = True
     while running:
-        pygame.time.delay(60) # 100 miliseconds
+        pygame.time.delay(400) # 100 miliseconds
 
         # pygame.event.get(), returns a list of all current I/O events occuring
         for event in pygame.event.get():
@@ -105,12 +108,18 @@ def main():
 
         client_sock.send(str(direction).encode('utf-8')) # direction sent
 
-        body_recv_str = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
+        list_of_bodystr = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
 
-        print("Recieved data from server: ", body_recv_str)
+
+        #updated_body_lists = list_of_bodystr.split('-') #"1,2|3,3|4,3-"
+
+        #print("updated:",updated_body_lists)
+
+        #print("Recieved data from server: ", updated_body_lists)
 
         window.blit(bg, (0, 0))
-        snake1.blit_body(body_recv_str, window)
+        #for i in range(len(updated_body_lists)):
+        snake.blit_body(list_of_bodystr, window)
 
         pygame.display.update()  # update screen
 
