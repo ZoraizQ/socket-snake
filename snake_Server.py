@@ -10,6 +10,7 @@ height = 500
 
 list_of_bodylists = []
 food_list = []
+score_list = []
 
 #bodylist = [[33,11],[12,23],[34,12]]
 #bodystr = "33,11|12,23|34,12"
@@ -86,6 +87,7 @@ class Snake_Tracker():
                     new_tail[1] += 10
                 self.body.append(new_tail)
                 del food_list[i]
+                score_list[self.id-1] += 10
                 break
 
         # checking for head going out of bounds
@@ -93,19 +95,19 @@ class Snake_Tracker():
             return False
         elif self.body[0] in self.body[1:]: #your head collides with your own body part
             return False
-        
-        
+            
         #or head in list_of_bodylists:
         for i in range(len(list_of_bodylists)):
-            list_of_snakei = list_of_bodylists[i]
-            if list_of_snakei == []: # ignore empty lists
+            snakei_list = list_of_bodylists[i]
+            if snakei_list == []: # ignore empty lists
                 continue
-            if self.body[0] == list_of_snakei[0]:
-                #print("collided head on")
+            if self.body[0] == snakei_list[0]:
+                #print("Head-on collision")
                 list_of_bodylists[i] = []
                 return False
-            elif self.body[0] in list_of_snakei[1:]:
-                #print("collided with part")
+            elif self.body[0] in snakei_list[1:]:
+                #print("%i's head collided with %i's part" % (self.id, i+1) )
+                score_list[i] += 100
                 return False
         
         return True
@@ -117,18 +119,23 @@ class Snake_Tracker():
     def get_id(self):
         return self.id
 
+    def empty_body(self): #[]
+        self.body = []
+
     def get_body(self): #[[30,40],[20,10],[30,90]]
         return self.body
 
 def player_thread(client_sock, client_id): 
     # north = 1, south = 2, east = 3, west = 4
     direction = random.randint(1,4) # randomly generate initial direction for now 
+    client_sock.send(str(direction).encode('utf-8')) # STRING function .encode(format), BYTESTRING function .decode(format) 
     snake_tracker = Snake_Tracker()
     
     #client_sock.send(str(client_id).encode('utf-8'))
     snake_tracker.set_id(client_id)
     
     running = True
+    snake_alive = True
     gamestep = 1
     while running:
         if gamestep % random.randint(20,40) == 0:
@@ -136,27 +143,31 @@ def player_thread(client_sock, client_id):
             foody = random.randint(1,49)*10
             food_list.append([foodx,foody])
         #if player_alive:
-        direction = int(client_sock.recv(1024).decode('utf-8')) #converting string into int
+        directionstr = client_sock.recv(1024).decode('utf-8')
+        if directionstr != '':
+            direction = int(directionstr) #converting string into int
         ''' 1024 - buffer size (data to recv from client socket at a time)
         We also had to decode it since data is encoded over a network into bytestrings
         We decode the bytestring recieved into text string with utf-8 encoding. '''
 
-        if snake_tracker.update_body(direction) == False:
-            print("Snake %i has collided." % snake_tracker.get_id())
-            list_of_bodylists[snake_tracker.get_id()-1] = []
-            running = False
-        else:
-            list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
+        if snake_alive == True:
+            if snake_tracker.update_body(direction) == False:
+                print("Snake %i has collided." % snake_tracker.get_id())
+                list_of_bodylists[snake_tracker.get_id()-1] = []
+                snake_tracker.empty_body()
+                #running = False, let the client loop run even after his snake has died
+                snake_alive = False
+            else:
+                list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
         
-        print(list_of_bodylists)
+        print(score_list)
 
         list_of_bodylists_str = ""
         for b in list_of_bodylists: #[[[30,70],[30,80],[30,90]], [[30,70],[30,80],[30,90]]]
             list_of_bodylists_str += str_from_list(b) + '-'
         list_of_bodylists_str = list_of_bodylists_str[:-1]
 
-        packet = str_from_list(food_list) + "%" + list_of_bodylists_str
-        print(packet)
+        packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1])
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
 
         gamestep += 1
@@ -183,6 +194,7 @@ def main():
         print("Connection from %s" % str(client_addr))
 
         list_of_bodylists.append([])
+        score_list.append(0)
 
         #my_lock.acquire()
 

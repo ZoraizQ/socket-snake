@@ -55,7 +55,9 @@ class Snake_Printer(): # Snake_Printer class
 
 def main():
     pygame.init()
-    
+    #pygame.font.SysFont(name, size, bold=False, italic=False)
+    font1 = pygame.font.SysFont('calibri', 14, True) # font object created
+
     win_dimensions = (500, 500) # tuple 500 pixels x 500 pixels (width, height)
     window = pygame.display.set_mode(win_dimensions) # surface created for main window
     
@@ -72,17 +74,15 @@ def main():
     print("Attempting to connect to %s on port %i." % (server_ip, server_port))
     client_sock.connect((server_ip, server_port))  # TCP - from the client side, we CONNECT to the given host and port
     # our client's port is decided arbitrarily by our computer e.g. 5192
-    
-    #client_id = int(client_sock.recv(1024).decode('utf-8')) # recv from server
 
-    snake = Snake_Printer()
-    #snake.set_id(client_id)
-    
+    # initially the direction is recieved from the server
+    direction = int(client_sock.recv(1024).decode('utf-8')) # bytestring from client buffer decoded to utf-8 string then to int
 
-    direction = 3
+    snake = Snake_Printer() #object of snake_printer() class
+  
     running = True
     while running:
-        pygame.time.delay(50) # 100 miliseconds
+        pygame.time.delay(200) # delay in miliseconds
 
         # pygame.event.get(), returns a list of all current I/O events occuring
         for event in pygame.event.get():
@@ -111,17 +111,22 @@ def main():
         window.blit(bg, (0, 0))
         
         packet = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
-        print(packet)
-        packet_list = packet.split('%')
-        updated_body_lists = packet_list[1].split('-') #"1,2|3,3|4,3-"
-        print("Recieved data from server: ", updated_body_lists)
-        
-        if packet_list[0] != "":
-            snake.blit_foodlist_str(packet_list[0], window)
+        print("RECIEVED PACKET ",packet)
+        packet_segments = packet.split('%')
+        updated_body_lists = packet_segments[1].split('-') #"1,2|3,3|4,3-"
+
+        if packet_segments[0] != "":
+            snake.blit_foodlist_str(packet_segments[0], window)
 
         for i in range(len(updated_body_lists)):
             if updated_body_lists[i] != "":
                 snake.blit_body(updated_body_lists[i], window)
+
+        packet_score = packet_segments[2]
+        print(packet_score)
+        # font.render(text, antialias, color, background=None) -> Surface
+        text_surface = font1.render('Score: ' + packet_score, True, (255,255,255))
+        window.blit(text_surface, (5, 5))
 
         pygame.display.update()  # update screen
 
