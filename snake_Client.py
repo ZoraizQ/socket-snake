@@ -3,11 +3,12 @@ import pygame
 import random
 from pygame.locals import * # import all variables needed
 
-class Snake(pygame.sprite.Sprite): # Snake is extended class of Sprite
+class Snake_Printer(pygame.sprite.Sprite): # Snake_Printer is extended class of Sprite
     def __init__(self):
-        super(Snake, self).__init__() # comment needed
+        super(Snake_Printer, self).__init__() # comment needed
         self.head_image = pygame.image.load('graphics/head.png').convert() # load method returns surface object from given path, convert creates a copy that will render quicker
         self.part_image = pygame.image.load('graphics/part.png').convert() # universal part image for this snake   
+        self.food_image = pygame.image.load('graphics/part2.png').convert() # universal food image for this snake   
         self.ms = 10 # movespeed
 
     def blit_body(self, new_body_str, wind):
@@ -36,6 +37,16 @@ class Snake(pygame.sprite.Sprite): # Snake is extended class of Sprite
             wind.blit(self.part_image, part_rect)
             # to blit the snake itself onto the window provided
 
+    def blit_foodlist_str(self, foodlist_str, wind):
+        foodlist = []
+        for pair in foodlist_str.split('|'):
+            foodlist.append(pair.split(','))
+
+        for food in foodlist:
+            food_rect = self.food_image.get_rect()
+            food_rect.x = int(food[0])
+            food_rect.y = int(food[1])
+            wind.blit(self.food_image, food_rect)
 
     def edit_graphics(self, new_head_img, new_part_img): # setter to edit images for the sprites for head and part any time
         self.head_image = pygame.image.load(new_head_img).convert()
@@ -64,14 +75,14 @@ def main():
     
     #client_id = int(client_sock.recv(1024).decode('utf-8')) # recv from server
 
-    snake = Snake()
+    snake = Snake_Printer()
     #snake.set_id(client_id)
     
 
     direction = 3
     running = True
     while running:
-        pygame.time.delay(400) # 100 miliseconds
+        pygame.time.delay(200) # 100 miliseconds
 
         # pygame.event.get(), returns a list of all current I/O events occuring
         for event in pygame.event.get():
@@ -95,17 +106,19 @@ def main():
         elif keys_dict[pygame.K_RIGHT] == True and direction != 4:
             direction = 3
 
-
         client_sock.send(str(direction).encode('utf-8')) # direction sent
 
-        list_of_bodystr = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
-
-
-        updated_body_lists = list_of_bodystr.split('-') #"1,2|3,3|4,3-"
-
-        print("Recieved data from server: ", updated_body_lists)
-
         window.blit(bg, (0, 0))
+        
+        packet = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
+        print(packet)
+        packet_list = packet.split('%')
+        updated_body_lists = packet_list[1].split('-') #"1,2|3,3|4,3-"
+        print("Recieved data from server: ", updated_body_lists)
+        
+        if packet_list[0] != "":
+            snake.blit_foodlist_str(packet_list[0], window)
+
         for i in range(len(updated_body_lists)):
             if updated_body_lists[i] != "":
                 snake.blit_body(updated_body_lists[i], window)
