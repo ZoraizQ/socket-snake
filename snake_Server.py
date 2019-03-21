@@ -4,16 +4,18 @@ from _thread import *
 import threading
 
 list_of_bodystr = ["",""]
+#bodylist = [[33,11],[12,23],[34,12]]
+#bodystr = "33,11|12,23|34,12"
 
-def str_from_bodylist(given_list):
+def bodystr_from_bodylist(given_list):
     new_str = ""
     for pair in given_list:
         new_str += ("%i,%i|" % (pair[0],pair[1]))
     return new_str[:-1]
 
-def list_from_bodystr(given_list):
+def bodylist_from_bodystr(given_str):
     new_body = []
-    for pair in new_body_str.split('|'):
+    for pair in given_str.split('|'):
         new_body.append(pair.split(','))
     return new_body
 
@@ -72,19 +74,20 @@ class Snake_Tracker():
         # checking for head going out of bounds
         if self.body[0][0] < 0 or (self.body[0][0]+10) > 500 or self.body[0][1] < 0 or (self.body[0][1]+10) > 500:
             return False
-        
-        if self.body[0] in self.body[1:]: #your head collides with your own body part
+        elif self.body[0] in self.body[1:]: #your head collides with your own body part
             return False
-        '''
-        other_snake_body = [[30,40], [40,60], [50,20]]
         
-        if self.body[0] == other_snake_body[0]: #your head collides with another head
-            # both die
-            return False
-        elif self.body[0] in other_snake_body: #your head collides another snake's body part other than the head
-            # my snake dies
-            return False #COLLISION
-        '''
+        #or head in list_of_bodystr:
+        for i in range(len(list_of_bodystr)):
+            list_of_snakei = bodylist_from_bodystr(list_of_bodystr[i])
+            if self.body[0] == list_of_snakei[0]:
+                print("collideedd head on")
+                list_of_bodystr[i] = ""
+                return False
+            elif self.body[0] in list_of_snakei[1:]:
+                print("collided with part")
+                return False
+
         return True
 
     # setter, getters for id
@@ -95,9 +98,8 @@ class Snake_Tracker():
     def get_id(self):
         return self.id
 
-
     def get_body_str(self): #30,40|20,10|30,90
-        return str_from_bodylist(self.body)
+        return bodystr_from_bodylist(self.body)
 
 def player_thread(client_sock, client_id): 
     # north = 1, south = 2, east = 3, west = 4
