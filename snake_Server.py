@@ -1,30 +1,36 @@
 import socket
-import pygame
 import random
-from pygame.locals import * # import all variables needed
 from _thread import *
 import threading
 
-#print_lock = threading.Lock()
 list_of_bodystr = ["",""]
+
+def str_from_bodylist(given_list):
+    new_str = ""
+    for pair in given_list:
+        new_str += ("%i,%i|" % (pair[0],pair[1]))
+    return new_str[:-1]
+
+def list_from_bodystr(given_list):
+    new_body = []
+    for pair in new_body_str.split('|'):
+        new_body.append(pair.split(','))
+    return new_body
 
 class Snake_Tracker():
     def __init__(self):
         super(Snake_Tracker, self).__init__() # comment needed        
+        self.ms = 10 # movespeed
+        self.id = 0 # player ID, should be either 1/2/3/4, 0 by default -- not set
+
         head_x = random.randint(6,49)*10 #lower bound inclusive, upper bound inclusive (0-490) in multiples of 10 (cell size)
         head_y = random.randint(6,49)*10
         
-        self.body = []
-        self.body.append([head_x,head_y])
-
-        for i in range(1,5):
+        self.body = [[head_x,head_y]]
+        for i in range(4):
             self.body.append([head_x-10*i,head_y])
         
-        self.ms = 10 # movespeed
-        self.id = 0 # player ID, should be either 1/2/3/4, 0 by default -- not set
-        #self.length = 3
-
-
+        
     # bool return type, false if updating was not possible (snake1 head killed)
     def update_body(self, direction):
         '''
@@ -64,7 +70,7 @@ class Snake_Tracker():
             self.body[0][0] += self.ms
         
         # checking for head going out of bounds
-        if self.body[0][0] <= 0 or (self.body[0][0]+10) > 500 or self.body[0][1] <= 0 or (self.body[0][1]+10) > 500:
+        if self.body[0][0] < 0 or (self.body[0][0]+10) > 500 or self.body[0][1] < 0 or (self.body[0][1]+10) > 500:
             return False
         
         if self.body[0] in self.body[1:]: #your head collides with your own body part
@@ -85,51 +91,45 @@ class Snake_Tracker():
     def set_id(self, new_id):
         self.id = new_id
 
-    
+
     def get_id(self):
         return self.id
 
-    def get_body_str(self): #30,40|20,10|30,90
-        new_str = ""
-        for pair in self.body:
-            new_str += ("%i,%i|" % (pair[0],pair[1]))
-        return new_str[:-1]
 
-def threaded(client_sock, client_id): 
+    def get_body_str(self): #30,40|20,10|30,90
+        return str_from_bodylist(self.body)
+
+def player_thread(client_sock, client_id): 
     # north = 1, south = 2, east = 3, west = 4
     direction = random.randint(1,4) # randomly generate initial direction for now 
     snake_tracker = Snake_Tracker()
     
-    client_sock.send(str(client_id).encode('utf-8'))
+    #client_sock.send(str(client_id).encode('utf-8'))
     snake_tracker.set_id(client_id)
     
     running = True
     while running:
         direction = int(client_sock.recv(1024).decode('utf-8')) #converting string into int
+        ''' 1024 - buffer size (data to recv from client socket at a time)
+        We also had to decode it since data is encoded over a network into bytestrings
+        We decode the bytestring recieved into text string with utf-8 encoding. '''
 
         if snake_tracker.update_body(direction) == False:
             print("Snake %i has collided." % snake_tracker.get_id())
-            list_of_bodystr[client_id-1] = ""
+            list_of_bodystr[snake_tracker.get_id()-1] = ""
             running = False
-        '''
-        1024 - buffer size (data to recv from client socket at a time)
-        We also had to decode it since data is encoded over a network into bytestrings
-        We decode the bytestring recieved into text string with utf-8 encoding.
-        '''
-        #client_id-1
-        list_of_bodystr[client_id-1] = snake_tracker.get_body_str() # "30,40|20,10|30,90"
+        else:
+            list_of_bodystr[client_id-1] = snake_tracker.get_body_str() # "30,40|20,10|30,90"
+        
         print(list_of_bodystr)
 
         new_str = ""
-        #["30,40|20,10|30,90", "30,40|20,10|30,90"]
-        
-        for b_str in list_of_bodystr:
+        for b_str in list_of_bodystr: #["30,40|20,10|30,90", "30,40|20,10|30,90"]
             new_str += b_str + '-'
-        new_str = new_str[:-1]
+        new_str = new_str[:-1] 
      
         client_sock.send(new_str.encode('utf-8')) # send data in a packet to a the clients socket
 
-    #print_lock.release()
     client_sock.close()
 
 # server script
@@ -157,7 +157,7 @@ def main():
         #print_lock.acquire()
 
         # Start a new thread and return its identifier 
-        start_new_thread(threaded, (client_sock, client_id))
+        start_new_thread(player_thread, (client_sock, client_id))
         client_id += 1
     server_sock.close()
    

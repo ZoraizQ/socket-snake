@@ -8,15 +8,12 @@ class Snake(pygame.sprite.Sprite): # Snake is extended class of Sprite
         super(Snake, self).__init__() # comment needed
         self.head_image = pygame.image.load('graphics/head.png').convert() # load method returns surface object from given path, convert creates a copy that will render quicker
         self.part_image = pygame.image.load('graphics/part.png').convert() # universal part image for this snake   
-
         self.ms = 10 # movespeed
-        self.id = 0 # player ID, should be either 1/2/3/4, 0 by default -- not set
 
     def blit_body(self, new_body_str, wind):
         new_body = []
         for pair in new_body_str.split('|'):
             new_body.append(pair.split(','))
-        print(new_body)
         #e.g. new_body = [['30', '40'], ['20', '10'], ['30', '90']]
         # rect = rectangular coordinates = ((x,y),(width,height))
         head_rect = self.head_image.get_rect()               
@@ -25,8 +22,10 @@ class Snake(pygame.sprite.Sprite): # Snake is extended class of Sprite
         head_rect.y = int(new_body[0][1])
 
         # checking for head going out of bounds, to change graphic color
-        if head_rect.x <= 0 or (head_rect.x+10) > 500 or head_rect.y <= 0 or (head_rect.y+10) > 500 or new_body[0] in new_body[1:]:
+        if head_rect.x < 0 or head_rect.x > 480 or head_rect.y < 0 or head_rect.y > 480 or new_body[0] in new_body[1:]:
             self.edit_graphics('graphics/part2.png','graphics/part2.png')
+        else:
+            self.edit_graphics('graphics/head.png','graphics/part.png')
             
         wind.blit(self.head_image, head_rect)
         # blitting parts
@@ -36,15 +35,6 @@ class Snake(pygame.sprite.Sprite): # Snake is extended class of Sprite
             part_rect.y = int(new_body[i][1])
             wind.blit(self.part_image, part_rect)
             # to blit the snake itself onto the window provided
-
-           
-    # setter, getters for id
-    def set_id(self, new_id):
-        self.id = new_id
-
-    
-    def get_id(self):
-        return self.id
 
 
     def edit_graphics(self, new_head_img, new_part_img): # setter to edit images for the sprites for head and part any time
@@ -72,10 +62,10 @@ def main():
     client_sock.connect((server_ip, server_port))  # TCP - from the client side, we CONNECT to the given host and port
     # our client's port is decided arbitrarily by our computer e.g. 5192
     
-    client_id = int(client_sock.recv(1024).decode('utf-8')) # recv from server
+    #client_id = int(client_sock.recv(1024).decode('utf-8')) # recv from server
 
     snake = Snake()
-    snake.set_id(client_id)
+    #snake.set_id(client_id)
     
 
     direction = 3
