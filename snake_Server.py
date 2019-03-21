@@ -4,6 +4,10 @@ from _thread import *
 import threading
 import copy
 
+
+width = 500
+height = 500
+
 list_of_bodylists = []
 food_list = []
 
@@ -85,7 +89,7 @@ class Snake_Tracker():
                 break
 
         # checking for head going out of bounds
-        if self.body[0][0] < 0 or (self.body[0][0]+10) > 500 or self.body[0][1] < 0 or (self.body[0][1]+10) > 500:
+        if self.body[0][0] < 0 or (self.body[0][0]+10) > width or self.body[0][1] < 0 or (self.body[0][1]+10) > height:
             return False
         elif self.body[0] in self.body[1:]: #your head collides with your own body part
             return False

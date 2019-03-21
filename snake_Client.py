@@ -3,9 +3,8 @@ import pygame
 import random
 from pygame.locals import * # import all variables needed
 
-class Snake_Printer(pygame.sprite.Sprite): # Snake_Printer is extended class of Sprite
+class Snake_Printer(): # Snake_Printer class
     def __init__(self):
-        super(Snake_Printer, self).__init__() # comment needed
         self.head_image = pygame.image.load('graphics/head.png').convert() # load method returns surface object from given path, convert creates a copy that will render quicker
         self.part_image = pygame.image.load('graphics/part.png').convert() # universal part image for this snake   
         self.food_image = pygame.image.load('graphics/part2.png').convert() # universal food image for this snake   
