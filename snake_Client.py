@@ -14,13 +14,13 @@ class Snake_Printer(pygame.sprite.Sprite): # Snake_Printer is extended class of 
     def blit_body(self, new_body_str, wind):
         new_body = []
         for pair in new_body_str.split('|'):
-            new_body.append(pair.split(','))
+            new_body.append([int(coord) for coord in pair.split(',')])
         #e.g. new_body = [['30', '40'], ['20', '10'], ['30', '90']]
         # rect = rectangular coordinates = ((x,y),(width,height))
         head_rect = self.head_image.get_rect()               
         # gets the rect object from the surface
-        head_rect.x = int(new_body[0][0])            
-        head_rect.y = int(new_body[0][1])
+        head_rect.x = new_body[0][0]            
+        head_rect.y = new_body[0][1]
 
         # checking for head going out of bounds, to change graphic color
         if head_rect.x < 0 or head_rect.x > 480 or head_rect.y < 0 or head_rect.y > 480 or new_body[0] in new_body[1:]:
@@ -32,8 +32,8 @@ class Snake_Printer(pygame.sprite.Sprite): # Snake_Printer is extended class of 
         # blitting parts
         for i in range(1, len(new_body)):
             part_rect = self.part_image.get_rect()
-            part_rect.x = int(new_body[i][0])
-            part_rect.y = int(new_body[i][1])
+            part_rect.x = new_body[i][0]
+            part_rect.y = new_body[i][1]
             wind.blit(self.part_image, part_rect)
             # to blit the snake itself onto the window provided
 
@@ -70,6 +70,7 @@ def main():
     server_port = 5004  # server's port
 
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Attempting to connect to %s on port %i." % (server_ip, server_port))
     client_sock.connect((server_ip, server_port))  # TCP - from the client side, we CONNECT to the given host and port
     # our client's port is decided arbitrarily by our computer e.g. 5192
     
@@ -82,7 +83,7 @@ def main():
     direction = 3
     running = True
     while running:
-        pygame.time.delay(200) # 100 miliseconds
+        pygame.time.delay(50) # 100 miliseconds
 
         # pygame.event.get(), returns a list of all current I/O events occuring
         for event in pygame.event.get():
@@ -125,6 +126,7 @@ def main():
 
         pygame.display.update()  # update screen
 
+    print("Client disconnecting.")
     client_sock.close()  # close connection if user quitted
     pygame.quit()
 

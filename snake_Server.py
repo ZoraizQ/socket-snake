@@ -2,14 +2,13 @@ import socket
 import random
 from _thread import *
 import threading
-import time
 import copy
 
 list_of_bodylists = []
-#bodylist = [[33,11],[12,23],[34,12]]
-#bodystr = "33,11|12,23|34,12"
 food_list = []
 
+#bodylist = [[33,11],[12,23],[34,12]]
+#bodystr = "33,11|12,23|34,12"
 def str_from_list(given_list):
     new_str = ""
     for pair in given_list:
@@ -23,8 +22,8 @@ class Snake_Tracker():
         self.ms = 10 # movespeed
         self.id = 0 # player ID, should be either 1/2/3/4, 0 by default -- not set
 
-        head_x = random.randint(6,49)*10 #lower bound inclusive, upper bound inclusive (0-490) in multiples of 10 (cell size)
-        head_y = random.randint(6,49)*10
+        head_x = random.randint(6,20)*10 #lower bound inclusive, upper bound inclusive (0-490) in multiples of 10 (cell size)
+        head_y = random.randint(6,20)*10
         
         self.body = [[head_x,head_y]]
         for i in range(4):
@@ -69,18 +68,18 @@ class Snake_Tracker():
         elif direction == 3:
             self.body[0][0] += self.ms
         
+        # when snake head collides with one of the foods
         for i in range(len(food_list)):
             if self.body[0] == food_list[i]:
-                tail = self.body[len(self.body)-1] 
-                new_tail = []  
+                new_tail = copy.deepcopy(self.body[len(self.body)-1]) 
                 if direction == 3:
-                    new_tail = [tail[0]-10, tail[1]]
+                    new_tail[0] -= 10
                 elif direction == 4:
-                    new_tail = [tail[0]-10, tail[1]]
+                    new_tail[0] += 10
                 elif direction == 2:
-                    new_tail = [tail[0], tail[1]-10]
+                    new_tail[1] -= 10
                 elif direction == 1:
-                    new_tail = [tail[0], tail[1]+10]
+                    new_tail[1] += 10
                 self.body.append(new_tail)
                 del food_list[i]
                 break
@@ -95,11 +94,11 @@ class Snake_Tracker():
         #or head in list_of_bodylists:
         for i in range(len(list_of_bodylists)):
             list_of_snakei = list_of_bodylists[i]
-            if list_of_snakei == []:
+            if list_of_snakei == []: # ignore empty lists
                 continue
             if self.body[0] == list_of_snakei[0]:
-                #print("collideedd head on")
-                list_of_bodylists[i] = ""
+                #print("collided head on")
+                list_of_bodylists[i] = []
                 return False
             elif self.body[0] in list_of_snakei[1:]:
                 #print("collided with part")
@@ -111,11 +110,10 @@ class Snake_Tracker():
     def set_id(self, new_id):
         self.id = new_id
 
-
     def get_id(self):
         return self.id
 
-    def get_body(self): #30,40|20,10|30,90
+    def get_body(self): #[[30,40],[20,10],[30,90]]
         return self.body
 
 def player_thread(client_sock, client_id): 
@@ -127,7 +125,13 @@ def player_thread(client_sock, client_id):
     snake_tracker.set_id(client_id)
     
     running = True
+    gamestep = 1
     while running:
+        if gamestep % random.randint(20,40) == 0:
+            foodx = random.randint(1,49)*10
+            foody = random.randint(1,49)*10
+            food_list.append([foodx,foody])
+        #if player_alive:
         direction = int(client_sock.recv(1024).decode('utf-8')) #converting string into int
         ''' 1024 - buffer size (data to recv from client socket at a time)
         We also had to decode it since data is encoded over a network into bytestrings
@@ -138,7 +142,7 @@ def player_thread(client_sock, client_id):
             list_of_bodylists[snake_tracker.get_id()-1] = []
             running = False
         else:
-            list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # "30,40|20,10|30,90"
+            list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
         
         print(list_of_bodylists)
 
@@ -151,16 +155,18 @@ def player_thread(client_sock, client_id):
         print(packet)
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
 
+        gamestep += 1
+
     client_sock.close()
 
 # server script
 def main():
-    host_ip = "127.0.0.1" # loop-back address
-    port = 5004  # pick an arbitrary port, outide range 1024 (the reserved space) 
-    # and does not clash with any other programs
+    host_ip = "0.0.0.0" # use all available IP addresses (both localhost and any public addresses configured)
+    port = 5004  # pick an arbitrary port, outide range 1024 (the reserved space) and does not clash with any other programs
 
     # socket(socket_family, socket_type)
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # AF_INET-> ipv4 & SOCK_STREAM->TCP
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # comment needed here
     server_sock.bind((host_ip, port))  # bind our socket to this machine - pass tuple for (host,port)
 
     maxPlayers = 2 #listen for 2 connections at a time
@@ -169,17 +175,12 @@ def main():
 
     client_id = 1
     while True:
-        # now we need to accept the connection
-        client_sock, client_addr = server_sock.accept()  # accepting connection from the server socket gives us both the client's socket 
-        # and the source address of the socket recieved
+        client_sock, client_addr = server_sock.accept()  # accepting connection from the server socket gives us both the client's socket and the source address
         print("Connection from %s" % str(client_addr))
 
         list_of_bodylists.append([])
 
-        foodx = random.randint(1,49)*10
-        foody = random.randint(1,49)*10
-        food_list.append([foodx,foody])
-        #print_lock.acquire()
+        #my_lock.acquire()
 
         # Start a new thread and return its identifier 
         start_new_thread(player_thread, (client_sock, client_id))
