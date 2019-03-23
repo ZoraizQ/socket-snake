@@ -110,10 +110,16 @@ def main():
 
         window.blit(bg, (0, 0))
         
+
         packet = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
         print("RECIEVED PACKET ",packet)
+
         packet_segments = packet.split('%')
         updated_body_lists = packet_segments[1].split('-') #"1,2|3,3|4,3-"
+         
+        if packet_segments[3] == "dead":
+            print("dead")
+            running = False
 
         if packet_segments[0] != "":
             snake.blit_foodlist_str(packet_segments[0], window)
@@ -122,6 +128,7 @@ def main():
             if updated_body_lists[i] != "":
                 snake.blit_body(updated_body_lists[i], window)
 
+
         packet_score = packet_segments[2]
         print(packet_score)
         # font.render(text, antialias, color, background=None) -> Surface
@@ -129,7 +136,11 @@ def main():
         window.blit(text_surface, (5, 5))
 
         pygame.display.update()  # update screen
-
+    
+    winner = client_sock.recv(1024).decode('utf-8')
+    print(winner)
+    pygame.time.delay(2000) # delay in miliseconds
+    print("BYEBYE")
     print("Client disconnecting.")
     client_sock.close()  # close connection if user quitted
     pygame.quit()

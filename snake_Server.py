@@ -7,7 +7,7 @@ import copy
 
 width = 500
 height = 500
-
+check = "alive"
 list_of_bodylists = []
 food_list = []
 score_list = []
@@ -167,11 +167,23 @@ def player_thread(client_sock, client_id):
             list_of_bodylists_str += str_from_list(b) + '-'
         list_of_bodylists_str = list_of_bodylists_str[:-1]
 
-        packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1])
+    
+        for i in range(len(list_of_bodylists)): #checking if the body list is empty
+            if list_of_bodylists[i] == []:
+                check = "dead" #if list_of_bodylists is empty 
+            else:
+                check = "alive"
+
+        packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1]) + "%" + check
+        print(packet)
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
-
         gamestep += 1
+        if check == 1:
+            running = False
 
+    winner_index = score_list.index(max(score_list)) + 1
+    print(winner_index)
+    client_sock.send(str(winner_index).encode('utf-8'))    
     client_sock.close()
 
 # server script
