@@ -3,15 +3,18 @@ import random
 from _thread import *
 import threading
 import copy
+import time
 
+width = 800
+height = 600
+gridfactor = 16 # cell size
 
-width = 500
-height = 500
 check = "alive"
+running = [False]
+
 list_of_bodylists = []
 food_list = []
 score_list = []
-
 #bodylist = [[33,11],[12,23],[34,12]]
 #bodystr = "33,11|12,23|34,12"
 def str_from_list(given_list):
@@ -20,19 +23,19 @@ def str_from_list(given_list):
         new_str += ("%i,%i|" % (pair[0],pair[1]))
     return new_str[:-1]
 
-
 class Snake_Tracker():
-    def __init__(self):
-        super(Snake_Tracker, self).__init__() # comment needed        
-        self.ms = 10 # movespeed
-        self.id = 0 # player ID, should be either 1/2/3/4, 0 by default -- not set
+    def __init__(self, given_id): # range for random generation
+        self.ms = gridfactor # movespeed
+        self.id = given_id # player ID, should be either 1/2/3/4, 0 by default -- not set
 
-        head_x = random.randint(6,20)*10 #lower bound inclusive, upper bound inclusive (0-490) in multiples of 10 (cell size)
-        head_y = random.randint(6,20)*10
-        
+         # range for spawning zones calculated according to width, height
+        head_x = random.randint(int(96/gridfactor), int(704/gridfactor))*gridfactor #lower bound inclusive, upper bound inclusive, in multiples of gridfactor (cell size)
+        head_y = random.randint(int(96/gridfactor), int(504/gridfactor))*gridfactor
+        print("Snake %i's head spawned at coordinates (%i, %i)" % (self.id, head_x, head_y))
+
         self.body = [[head_x,head_y]]
         for i in range(4):
-            self.body.append([head_x-10*i,head_y])
+            self.body.append([head_x-gridfactor*i,head_y])
         
         
     # bool return type, false if updating was not possible (snake1 head killed)
@@ -78,20 +81,20 @@ class Snake_Tracker():
             if self.body[0] == food_list[i]:
                 new_tail = copy.deepcopy(self.body[len(self.body)-1]) 
                 if direction == 3:
-                    new_tail[0] -= 10
+                    new_tail[0] -= self.ms
                 elif direction == 4:
-                    new_tail[0] += 10
+                    new_tail[0] += self.ms
                 elif direction == 2:
-                    new_tail[1] -= 10
+                    new_tail[1] -= self.ms
                 elif direction == 1:
-                    new_tail[1] += 10
+                    new_tail[1] += self.ms
                 self.body.append(new_tail)
                 del food_list[i]
-                score_list[self.id-1] += 10
+                score_list[self.id-1] += 15
                 break
 
         # checking for head going out of bounds
-        if self.body[0][0] < 0 or (self.body[0][0]+10) > width or self.body[0][1] < 0 or (self.body[0][1]+10) > height:
+        if self.body[0][0] < 0 or self.body[0][0] > width or self.body[0][1] < 0 or self.body[0][1] > height:
             return False
         elif self.body[0] in self.body[1:]: #your head collides with your own body part
             return False
@@ -129,39 +132,35 @@ def player_thread(client_sock, client_id):
     # north = 1, south = 2, east = 3, west = 4
     direction = random.randint(1,4) # randomly generate initial direction for now 
     client_sock.send(str(direction).encode('utf-8')) # STRING function .encode(format), BYTESTRING function .decode(format) 
-    snake_tracker = Snake_Tracker()
-    
-    #client_sock.send(str(client_id).encode('utf-8'))
-    snake_tracker.set_id(client_id)
-    
-    running = True
+    snake_tracker = Snake_Tracker(client_id)
+
+    #snake_tracker.update_body(direction) # update list once
+    list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body())
+
     snake_alive = True
     gamestep = 1
-    while running:
-        if gamestep % random.randint(20,40) == 0:
-            foodx = random.randint(1,49)*10
-            foody = random.randint(1,49)*10
+    while True:
+        if running[0] and gamestep % random.randint(30,60) == 0:
+            foodx = random.randint(1,49)*gridfactor
+            foody = random.randint(1,49)*gridfactor
             food_list.append([foodx,foody])
-        #if player_alive:
-        directionstr = client_sock.recv(1024).decode('utf-8')
+        
+        directionstr = client_sock.recv(8).decode('utf-8')
         if directionstr != '':
             direction = int(directionstr) #converting string into int
         ''' 1024 - buffer size (data to recv from client socket at a time)
         We also had to decode it since data is encoded over a network into bytestrings
         We decode the bytestring recieved into text string with utf-8 encoding. '''
 
-        if snake_alive == True:
+        if snake_alive and running[0]:
             if snake_tracker.update_body(direction) == False:
                 print("Snake %i has collided." % snake_tracker.get_id())
                 list_of_bodylists[snake_tracker.get_id()-1] = []
                 snake_tracker.empty_body()
-                #running = False, let the client loop run even after his snake has died
                 snake_alive = False
             else:
                 list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
         
-        print(score_list)
-
         list_of_bodylists_str = ""
         for b in list_of_bodylists: #[[[30,70],[30,80],[30,90]], [[30,70],[30,80],[30,90]]]
             list_of_bodylists_str += str_from_list(b) + '-'
@@ -178,13 +177,18 @@ def player_thread(client_sock, client_id):
         print(packet)
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
         gamestep += 1
-        if check == 1:
-            running = False
-
+        if check == "dead":
+            #running = False
+            return False
+    '''
     winner_index = score_list.index(max(score_list)) + 1
     print(winner_index)
     client_sock.send(str(winner_index).encode('utf-8'))    
+    '''
+    print("Client %i is disconnecting." % client_id)
     client_sock.close()
+    list_of_bodylists[snake_tracker.get_id()-1] = []
+
 
 # server script
 def main():
@@ -196,23 +200,29 @@ def main():
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # comment needed here
     server_sock.bind((host_ip, port))  # bind our socket to this machine - pass tuple for (host,port)
 
-    maxPlayers = 2 #listen for 2 connections at a time
-    server_sock.listen(maxPlayers) 
+    requiredPlayers = int(input("Enter number of players that will be playing: ")) # listen for the required number of connections at a time
+    server_sock.listen(requiredPlayers) # server will not start listening also until this parameter has been given
     print("Server listening for connections...")
 
     client_id = 1
+    numPlayers = len(score_list)  # len(score_list) gives us total number of players currently (0 appended for each)
+    
     while True:
         client_sock, client_addr = server_sock.accept()  # accepting connection from the server socket gives us both the client's socket and the source address
         print("Connection from %s" % str(client_addr))
-
-        list_of_bodylists.append([])
+        
         score_list.append(0)
-
-        #my_lock.acquire()
-
+        list_of_bodylists.append([])
+        print("Player %i has connected. Waiting for %i more player(s)." % (client_id, requiredPlayers-len(score_list)))
+        
+        numPlayers = len(score_list) # score list updated each time, since 0 added 
+        if numPlayers == requiredPlayers:
+            print("Player requirement met. Game beginning.")
+            running[0] = True
         # Start a new thread and return its identifier 
         start_new_thread(player_thread, (client_sock, client_id))
         client_id += 1
+        
     server_sock.close()
    
 if __name__ == '__main__':
