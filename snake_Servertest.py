@@ -19,6 +19,7 @@ score_list = []
 
 #bodylist = [[33,11],[12,23],[34,12]]
 #bodystr = "33,11|12,23|34,12"
+
 def str_from_list(given_list):
     new_str = ""
     for pair in given_list:
@@ -162,6 +163,7 @@ def player_thread(client_sock, client_id):
             if snake_tracker.update_body(direction) == False:
                 print("Snake %i has collided and died." % snake_tracker.get_id())
                 list_of_bodylists[snake_tracker.get_id()-1] = []
+                #snake_tracker.empty_body()
                 snake_alive = False
             else:
                 list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
@@ -185,8 +187,11 @@ def player_thread(client_sock, client_id):
         time.sleep(0.1) #delay on server end
 
     winner = score_list.index(max(score_list)) + 1
-    client_sock.send(str(winner).encode('utf-8'))
+    client_sock.send(str(winner).encode('utf-8'))  
     print("Client %i is disconnecting." % client_id)
+    client_sock.close()
+    list_of_bodylists[snake_tracker.get_id()-1] = []
+
 
 # server script
 def main(argv):
@@ -231,7 +236,7 @@ def main(argv):
         except:
             print("Quitting server.")
             quit()
-
+    gameInProgress = False
     print("Quitting server.")    
     server_sock.close()
    
