@@ -17,6 +17,8 @@ list_of_bodylists = []
 food_list = []
 score_list = []
 
+last_survivor = 0
+
 #bodylist = [[33,11],[12,23],[34,12]]
 #bodystr = "33,11|12,23|34,12"
 def str_from_list(given_list):
@@ -25,6 +27,19 @@ def str_from_list(given_list):
         new_str += ("%i,%i|" % (pair[0],pair[1]))
     return new_str[:-1]
 
+def survivorsCount():
+    num = 0
+    last = 0
+    for i in range(len(list_of_bodylists)): #checking if the body list is empty
+        if list_of_bodylists[i] != []:
+            last = i+1
+            num += 1
+
+    if num == 1:
+        global last_survivor
+        last_survivor = last
+        print(last_survivor)
+    return num
 
 class Snake_Tracker():
     def __init__(self, given_id): # range for random generation
@@ -110,6 +125,8 @@ class Snake_Tracker():
             if self.body[0] == snakei_list[0]:
                 print("Head-on collision")
                 list_of_bodylists[i] = []
+                global last_survivor
+                last_survivor = 0
                 return False
             elif self.body[0] in snakei_list[1:] and self.id != i+1:
                 print("%i's head collided with %i's part" % (self.id, i+1))
@@ -162,6 +179,7 @@ def player_thread(client_sock, client_id):
             if snake_tracker.update_body(direction) == False:
                 print("Snake %i has collided and died." % snake_tracker.get_id())
                 list_of_bodylists[snake_tracker.get_id()-1] = []
+                #snake_tracker.empty_body()
                 snake_alive = False
             else:
                 list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
@@ -171,12 +189,10 @@ def player_thread(client_sock, client_id):
             list_of_bodylists_str += str_from_list(b) + '-'
         list_of_bodylists_str = list_of_bodylists_str[:-1]
 
-        for i in range(len(list_of_bodylists)): #checking if the body list is empty
-            if list_of_bodylists[i] == []:
-                status_all = "dead" #if list_of_bodylists is empty 
-            else:
-                status_all = "alive"
-
+        
+        if survivorsCount() == 0:
+            status_all = "dead" #if list_of_bodylists is empty (survivorsCount), status_all changed from "alive" to "dead"
+        
 
         packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1]) + "%" + status_all
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
@@ -184,8 +200,23 @@ def player_thread(client_sock, client_id):
         gamestep += 1
         time.sleep(0.1) #delay on server end
 
-    winner = score_list.index(max(score_list)) + 1
+    winner = -1
+    global last_survivor
+    if last_survivor == 0:
+        print("No one wins.")
+    else:
+        #score_list[last_survivor-1] += 250 # last survivor gets a bonus of 250
+        winner = last_survivor
+
+    #highest_score = score_list.index(max(score_list)) + 1
     client_sock.send(str(winner).encode('utf-8'))
+
+    final_scores_str = ""
+    for s in score_list:
+        final_scores_str += str(s) + '|'
+    final_scores_str = final_scores_str[:-1]
+    client_sock.send(final_scores_str.encode('utf-8'))
+
     print("Client %i is disconnecting." % client_id)
 
 # server script

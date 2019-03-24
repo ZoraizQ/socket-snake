@@ -171,11 +171,21 @@ def main(argv):
             print("All snakes are dead.")
             running = False
     
-    winner = client_sock.recv(1024).decode('utf-8')
+    winner = client_sock.recv(4).decode('utf-8')
     font2 = pygame.font.SysFont('calibri', gridfactor*3, True)
     text_surface = font2.render('WINNER: PLAYER ' + str(winner), True, (0,0,0))
     bounce_down(window, text_surface, bg)
-    pygame.display.update()
+
+    final_scores = client_sock.recv(1024).decode('utf-8').split('|')
+    
+    window.blit(bg, (0, 0))
+    text_surface = font1.render('SCORE LIST', True, (0,0,0))
+    window.blit(text_surface, (358, 8))
+    for i in range(len(final_scores)):
+        text_surface = font1.render('Player ' + str(i+1) + ": " + final_scores[i], True, (0,0,0))
+        window.blit(text_surface, (350, (i+1)*(gridfactor*2)))
+    
+    pygame.display.update()  # update screen
 
     print("Disconnecting.")
     print("Exiting in 3 seconds.")
