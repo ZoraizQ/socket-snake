@@ -30,6 +30,23 @@ def bounce_down(wind, textsurf, bg): # comment
             pygame.time.delay(pace)
         minim = maxim
 
+def isStrListEmpty(given_list):
+    empty = True
+    for s in given_list:
+        if s != "":
+            empty = False
+
+    return empty
+
+def recv_packet(c_sock):
+    packet_size = c_sock.recv(1).decode('utf-8') # pick the first 1 byte (normal size of chars)
+    while "%" not in packet_size:
+        packet_size += c_sock.recv(1).decode('utf-8') # recieve 1 byte every time
+
+    packet_size = int(packet_size.split("%")[0])
+    packet = c_sock.recv(packet_size).decode('utf-8')
+    return packet
+
 class Snake_Printer(): # Snake_Printer class
     def __init__(self):
         self.part_image = pygame.image.load('graphics/part1.png').convert_alpha() # universal part image for this snake   
@@ -112,6 +129,7 @@ def main(argv):
   
     running = True
     packet_score = ""
+    packet_segments = ""
     while running:
         pygame.time.delay(100) # delay in miliseconds
 
@@ -136,17 +154,15 @@ def main(argv):
             direction = 2  
         elif keys_dict[pygame.K_RIGHT] == True and direction != 4:
             direction = 3
-        elif keys_dict[K_ESCAPE]:
-            running = False
 
         client_sock.send(str(direction).encode('utf-8')) # direction sent
 
         window.blit(bg, (0, 0))
         
-        packet = client_sock.recv(1024).decode('utf-8')  # client's socket recieves data from the server script running on the server it connected to
-
-        # print("RECIEVED PACKET ",packet)
+        packet = recv_packet(client_sock) # client's socket recieves data from the server script running on the server it connected to
+        
         packet_segments = packet.split('%')
+       
         updated_body_lists = packet_segments[1].split('-') #"1,2|3,3|4,3-"
 
         if packet_segments[0] != "":
@@ -167,27 +183,30 @@ def main(argv):
 
         pygame.display.update()  # update screen
 
-        if packet_segments[3] == "dead":
+        if isStrListEmpty(updated_body_lists):
             print("All snakes are dead.")
             running = False
     
-    winner = client_sock.recv(4).decode('utf-8')
+    winner = packet_segments[3]
+    displaystr = 'WINNER: PLAYER ' + winner
+    if winner == "-1":
+        displaystr = 'ITS A DRAW'
+
     font2 = pygame.font.SysFont('calibri', gridfactor*3, True)
-    text_surface = font2.render('WINNER: PLAYER ' + str(winner), True, (0,0,0))
+    text_surface = font2.render(displaystr, True, (0,0,0))
     bounce_down(window, text_surface, bg)
 
-    final_scores = client_sock.recv(1024).decode('utf-8').split('|')
+    final_scores = packet_segments[4].split('|')
     
     window.blit(bg, (0, 0))
-    text_surface = font1.render('SCORE LIST', True, (0,0,0))
-    window.blit(text_surface, (358, 8))
+    text_surface = font1.render('SCORE LIST', True, (200,0,0))
+    window.blit(text_surface, (350, 8))
     for i in range(len(final_scores)):
         text_surface = font1.render('Player ' + str(i+1) + ": " + final_scores[i], True, (0,0,0))
         window.blit(text_surface, (350, (i+1)*(gridfactor*2)))
     
     pygame.display.update()  # update screen
 
-    print("Disconnecting.")
     print("Exiting in 3 seconds.")
     pygame.time.wait(3000)
     client_sock.close()  # close connection if user quitted

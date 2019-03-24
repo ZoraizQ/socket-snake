@@ -171,7 +171,7 @@ def player_thread(client_sock, client_id):
         directionstr = client_sock.recv(4).decode('utf-8')
         if directionstr != '':
             direction = int(directionstr) #converting string into int
-        ''' 1024 - buffer size (data to recv from client socket at a time)
+        ''' 4 - buffer size (data to recv from client socket at a time)
         We also had to decode it since data is encoded over a network into bytestrings
         We decode the bytestring recieved into text string with utf-8 encoding. '''
 
@@ -179,7 +179,7 @@ def player_thread(client_sock, client_id):
             if snake_tracker.update_body(direction) == False:
                 print("Snake %i has collided and died." % snake_tracker.get_id())
                 list_of_bodylists[snake_tracker.get_id()-1] = []
-                #snake_tracker.empty_body()
+                snake_tracker.empty_body()
                 snake_alive = False
             else:
                 list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
@@ -189,35 +189,35 @@ def player_thread(client_sock, client_id):
             list_of_bodylists_str += str_from_list(b) + '-'
         list_of_bodylists_str = list_of_bodylists_str[:-1]
 
+        packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1])
         
         if survivorsCount() == 0:
             status_all = "dead" #if list_of_bodylists is empty (survivorsCount), status_all changed from "alive" to "dead"
-        
+            winner = -1
+            global last_survivor
+            if last_survivor == 0:
+                print("No one wins.")
+            else:
+                #score_list[last_survivor-1] += 250 # last survivor gets a bonus of 250
+                winner = last_survivor
 
-        packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1]) + "%" + status_all
+            #highest_score = score_list.index(max(score_list)) + 1
+            packet += "%"+str(winner)
+
+            final_scores_str = ""
+            for s in score_list:
+                final_scores_str += str(s) + '|'
+            packet += "%" + final_scores_str[:-1]
+
+        packet_size = sys.getsizeof(packet)
+        packet = str(packet_size) + "%" + packet
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
-
+        
         gamestep += 1
-        time.sleep(0.1) #delay on server end
-
-    winner = -1
-    global last_survivor
-    if last_survivor == 0:
-        print("No one wins.")
-    else:
-        #score_list[last_survivor-1] += 250 # last survivor gets a bonus of 250
-        winner = last_survivor
-
-    #highest_score = score_list.index(max(score_list)) + 1
-    client_sock.send(str(winner).encode('utf-8'))
-
-    final_scores_str = ""
-    for s in score_list:
-        final_scores_str += str(s) + '|'
-    final_scores_str = final_scores_str[:-1]
-    client_sock.send(final_scores_str.encode('utf-8'))
+        time.sleep(0.01) #delay on server end
 
     print("Client %i is disconnecting." % client_id)
+    #client_sock.close()
 
 # server script
 def main(argv):
@@ -231,15 +231,16 @@ def main(argv):
 
     print ("Number of players that will be playing: " + argv[2])
     requiredPlayers = int(argv[2]) # listen for the required number of connections at a time
-    server_sock.listen(requiredPlayers) # server will not start listening also until this parameter has been given
     print("Server listening for connections...")
 
     client_id = 1
     numPlayers = len(score_list)  # len(score_list) gives us total number of players currently (0 appended for each)
 
+    threads = []
     global gameInProgress
     while True:
         try:
+            server_sock.listen(requiredPlayers) # server will not start listening also until this parameter has been given
             client_sock, client_addr = server_sock.accept()  # accepting connection from the server socket gives us both the client's socket and the source address
             print("Connection from %s" % str(client_addr))
 
@@ -257,12 +258,15 @@ def main(argv):
                 print("Player requirement met. Game beginning.")
                 gameInProgress = True
             # Start a new thread and return its identifier 
-            start_new_thread(player_thread, (client_sock, client_id))
+            t = start_new_thread(player_thread, (client_sock, client_id))
+            threads.append(t)
             client_id += 1
         except:
             print("Quitting server.")
             quit()
 
+    for t in threads:
+        t.join()
     print("Quitting server.")    
     server_sock.close()
    
