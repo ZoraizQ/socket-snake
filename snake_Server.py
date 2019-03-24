@@ -38,7 +38,6 @@ def survivorsCount():
     if num == 1:
         global last_survivor
         last_survivor = last
-        print(last_survivor)
     return num
 
 class Snake_Tracker():
@@ -191,7 +190,7 @@ def player_thread(client_sock, client_id):
 
         packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1])
         
-        if survivorsCount() == 0:
+        if survivorsCount() == 0 and gameInProgress:
             status_all = "dead" #if list_of_bodylists is empty (survivorsCount), status_all changed from "alive" to "dead"
             winner = -1
             global last_survivor
@@ -208,16 +207,18 @@ def player_thread(client_sock, client_id):
             for s in score_list:
                 final_scores_str += str(s) + '|'
             packet += "%" + final_scores_str[:-1]
+            packet = str(sys.getsizeof(packet)) + "%" + packet
+            client_sock.sendall(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
+            break
+        
 
-        packet_size = sys.getsizeof(packet)
-        packet = str(packet_size) + "%" + packet
+        packet = str(sys.getsizeof(packet)) + "%" + packet
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
         
         gamestep += 1
-        time.sleep(0.01) #delay on server end
+        time.sleep(0.02) #delay on server end
 
     print("Client %i is disconnecting." % client_id)
-    #client_sock.close()
 
 # server script
 def main(argv):

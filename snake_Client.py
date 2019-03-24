@@ -40,10 +40,12 @@ def isStrListEmpty(given_list):
 
 def recv_packet(c_sock):
     packet_size = c_sock.recv(1).decode('utf-8') # pick the first 1 byte (normal size of chars)
+    if packet_size == "": # very first character is empty
+        return ""
     while "%" not in packet_size:
         packet_size += c_sock.recv(1).decode('utf-8') # recieve 1 byte every time
 
-    packet_size = int(packet_size.split("%")[0])
+    packet_size = int(packet_size[:-1])
     packet = c_sock.recv(packet_size).decode('utf-8')
     return packet
 
@@ -200,10 +202,10 @@ def main(argv):
     
     window.blit(bg, (0, 0))
     text_surface = font1.render('SCORE LIST', True, (200,0,0))
-    window.blit(text_surface, (350, 8))
+    window.blit(text_surface, (350, 208))
     for i in range(len(final_scores)):
         text_surface = font1.render('Player ' + str(i+1) + ": " + final_scores[i], True, (0,0,0))
-        window.blit(text_surface, (350, (i+1)*(gridfactor*2)))
+        window.blit(text_surface, (350, 200+(i+1)*(gridfactor*2)))
     
     pygame.display.update()  # update screen
 
