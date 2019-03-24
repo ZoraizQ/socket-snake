@@ -137,13 +137,12 @@ def main(argv):
 
         # pygame.event.get(), returns a list of all current I/O events occuring
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-            # every event has a type, and also event.key == pygame.K_ESCAPE so event has key pressed if I/O event
+            if event.type == pygame.QUIT: # every event has a type, and also event.key == pygame.K_ESCAPE so event has key pressed if I/O event
             # event checking if the red button X is pressed/clicked 
-                running = False # loop breaks
-            #elif event.type == pygame.KEYDOWN:
-            #    if event.key == pygame.K_ESCAPE:
-            #        running = False
+                print("Forced disconnect. Exiting in 1 second.")
+                pygame.time.wait(1000)
+                client_sock.close()  # close connection if user quitted
+                pygame.quit()
 
         keys_dict = pygame.key.get_pressed()  # gets current dictonary of keyboard presses where each key e.g. pygame.K_LEFT has a value of 1 or 0 (pressed/not pressed)
 
@@ -209,7 +208,7 @@ def main(argv):
     
     pygame.display.update()  # update screen
 
-    print("Exiting in 3 seconds.")
+    print("Game over. Exiting in 3 seconds.")
     pygame.time.wait(3000)
     client_sock.close()  # close connection if user quitted
     pygame.quit()

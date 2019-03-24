@@ -141,9 +141,6 @@ class Snake_Tracker():
     def get_id(self):
         return self.id
 
-    def empty_body(self): #[]
-        self.body = []
-
     def get_body(self): #[[30,40],[20,10],[30,90]]
         return self.body
 
@@ -167,9 +164,12 @@ def player_thread(client_sock, client_id):
             foody = random.randint(0,int(height/gridfactor))*gridfactor
             food_list.append([foodx,foody])
         
-        directionstr = client_sock.recv(4).decode('utf-8')
-        if directionstr != '':
-            direction = int(directionstr) #converting string into int
+        directionbstr = client_sock.recv(4)
+        if not directionbstr:
+            list_of_bodylists[client_id-1] = []
+            break
+        
+        direction = int(directionbstr.decode('utf-8'))
         ''' 4 - buffer size (data to recv from client socket at a time)
         We also had to decode it since data is encoded over a network into bytestrings
         We decode the bytestring recieved into text string with utf-8 encoding. '''
@@ -177,8 +177,7 @@ def player_thread(client_sock, client_id):
         if snake_alive and gameInProgress:
             if snake_tracker.update_body(direction) == False:
                 print("Snake %i has collided and died." % snake_tracker.get_id())
-                list_of_bodylists[snake_tracker.get_id()-1] = []
-                snake_tracker.empty_body()
+                list_of_bodylists[client_id-1] = []
                 snake_alive = False
             else:
                 list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
@@ -219,6 +218,7 @@ def player_thread(client_sock, client_id):
         time.sleep(0.02) #delay on server end
 
     print("Client %i is disconnecting." % client_id)
+    client_sock.close()
 
 # server script
 def main(argv):
