@@ -10,7 +10,7 @@ gridfactor = 16
 part_graphics_list = ['graphics/part1.png', 'graphics/part2.png', 'graphics/part3.png', 'graphics/part4.png']
 
 def bounce_down(wind, textsurf, bg): # comment
-    grav = 4
+    grav = 6
     pace = 20
     x = int(width/2)-gridfactor*12
     y = int(height/2)-gridfactor*2
@@ -156,6 +156,7 @@ def main(argv):
                 client_sock.shutdown(2)
                 client_sock.close()  # close connection if user quitted
                 pygame.quit()
+                quit()
 
         keys_dict = pygame.key.get_pressed()  # gets current dictonary of keyboard presses where each key e.g. pygame.K_LEFT has a value of 1 or 0 (pressed/not pressed)
 
@@ -209,22 +210,31 @@ def main(argv):
             print("Final packet recieved. All snakes are dead.")
             running = False
     
+    if len(packet_segments) <= 3:
+        client_sock.send("ACK".encode('utf-8'))
+        client_sock.shutdown(2)
+        client_sock.close()
+        quit()
+
     winner = packet_segments[3]
     displaystr = 'WINNER: PLAYER ' + winner
     if winner == "-1":
         displaystr = 'THERE IS NO WINNER'
 
+    print(displaystr)
     font2 = pygame.font.SysFont('calibri', gridfactor*3, True)
     text_surface = font2.render(displaystr, True, (255,255,255))
     bounce_down(window, text_surface, bg)
-
+    pygame.time.delay(500)
     final_scores = packet_segments[4].split('|')
     
     window.blit(bg, (0, 0))
     text_surface = font1.render('SCORE LIST', True, (255,69,0))
     window.blit(text_surface, (350, 208))
     for i in range(len(final_scores)):
-        text_surface = font1.render('Player ' + str(i+1) + ": " + final_scores[i], True, (255,255,255))
+        scorestr = 'Player ' + str(i+1) + ": " + final_scores[i]
+        print(scorestr)
+        text_surface = font1.render(scorestr, True, (255,255,255))
         window.blit(text_surface, (350, 200+(i+1)*(gridfactor*2)))
     
     pygame.display.update()  # update screen

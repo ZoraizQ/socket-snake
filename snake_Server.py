@@ -210,7 +210,10 @@ def player_thread(client_sock, client_id, barrier1):
             packet += "%" + final_scores_str[:-1]
             #barrier2 = threading.Barrier(playersInGame)
             print("Client " + str(client_id) + " reached the final barrier.", barrier1.parties) # .broken, .parties, .abort(), .reset() . wait()m
-            barrier1.wait(10)
+            try:
+                barrier1.wait(3)
+            except:
+                barrier1.abort()
 
         gamestep += 1
 
@@ -226,7 +229,7 @@ def player_thread(client_sock, client_id, barrier1):
             print("ACK recieved.")
             break
 
-    print("Client %i is disconnecting." % client_id)
+    print("Client %i is disconnecting, terminating the thread in a few seconds." % client_id)
     list_of_bodylists[client_id-1] = []
     playersInGame -= 1
     time.sleep(3)
