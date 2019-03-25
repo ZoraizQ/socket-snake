@@ -153,9 +153,9 @@ def player_thread(client_sock, client_id, barrier1):
     global all_alive
     global playersInGame
     while all_alive:
-        if gamestep % random.randint(30,60) == 0:
-            foodx = random.randint(2,int(width/gridfactor)-1)*gridfactor
-            foody = random.randint(1,int(height/gridfactor)-1)*gridfactor
+        if gamestep % random.randint(40,60) == 0:
+            foodx = random.randint(1,int(width/gridfactor)-2)*gridfactor
+            foody = random.randint(2,int(height/gridfactor)-2)*gridfactor
             food_list.append([foodx,foody])
         
         directionbstr = client_sock.recv(1)
