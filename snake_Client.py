@@ -117,6 +117,7 @@ def main(argv):
             pygame.time.wait(3000)
             quit()
     except:
+        print("Unable to connect to the server.")
         client_sock.shutdown(2)
         client_sock.close()
         quit()
