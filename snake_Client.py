@@ -152,7 +152,7 @@ def main(argv):
             # event checking if the red button X is pressed/clicked 
                 print("Forced disconnect. Exiting in 1 second.")
                 pygame.time.wait(1000)
-                client_sock.shutdown()
+                client_sock.shutdown(2)
                 client_sock.close()  # close connection if user quitted
                 pygame.quit()
 

@@ -166,7 +166,7 @@ def player_thread(client_sock, client_id, barrier1):
                 snake_tracker.set_alive(False)
                 break
         except socket.error:
-            client_sock.shutdown(SHUT_RDWR)
+            client_sock.shutdown(2)
             list_of_bodylists[client_id-1] = []
             snake_tracker.set_alive(False)
             break
