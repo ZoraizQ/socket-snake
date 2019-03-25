@@ -106,16 +106,22 @@ def main(argv):
         print("Unable to connect to the server.")
         quit()
 
-    print ("Connected.")
     # initially the direction is recieved from the server
     direction = 0
-    directionstr = client_sock.recv(1).decode('utf-8') # bytestring from client buffer decoded to utf-8 string then to int
-    if directionstr == '':
-        print("Sorry, there may already be a game in progress. \nExiting in 3 seconds.")
+    try:
+        directionbstr = client_sock.recv(1)
+        if not directionbstr:
+            print("Sorry, there may already be a game in progress. \nExiting in 3 seconds.")
+            client_sock.shutdown(2)
+            client_sock.close()
+            pygame.time.wait(3000)
+            quit()
+    except:
+        client_sock.shutdown(2)
         client_sock.close()
-        pygame.quit()
-        pygame.time.wait(3000)
-        quit()    
+        quit()
+
+    print ("Connected.")
 
     print("Initializing the game.")
     pygame.init()
@@ -131,7 +137,7 @@ def main(argv):
     # render/blit background image on window
     window.blit(bg, (0, 0)) # block information transfer, render surface onto another surface
     
-    direction = int(directionstr)
+    direction = int(directionbstr.decode('utf-8')) # bytestring from client buffer decoded to utf-8 string then to int
     snake = Snake_Printer() #object of snake_printer() class
       
     running = True
@@ -171,7 +177,7 @@ def main(argv):
             if packet == "":
                 break
         except socket.error:
-            client_sock.shutdown(SHUT_RDWR)
+            client_sock.shutdown(2)
             client_sock.close()
             quit()
 
@@ -224,7 +230,7 @@ def main(argv):
     client_sock.send("ACK".encode('utf-8'))
     print("Game over. Exiting in 3 seconds.")
     pygame.time.wait(3000)
-    client_sock.shutdown(SHUT_RDWR)
+    client_sock.shutdown(2) # SHUT_RD, SHUT_WR, SHUT_RDWR --- value 0, 1, 2
     client_sock.close()  # close connection if user quitted
     pygame.quit()
 
