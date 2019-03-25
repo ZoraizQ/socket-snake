@@ -39,9 +39,10 @@ def isStrListEmpty(given_list):
     return empty
 
 def recv_packet(c_sock):
-    packet_size = c_sock.recv(1).decode('utf-8') # pick the first 1 byte (normal size of chars)
-    if packet_size == "": # very first character is empty
+    testdata = c_sock.recv(1)
+    if not testdata:
         return ""
+    packet_size = testdata.decode('utf-8') # pick the first 1 byte (normal size of chars)
     while "%" not in packet_size:
         packet_size += c_sock.recv(1).decode('utf-8') # recieve 1 byte every time
 
@@ -103,6 +104,16 @@ def main(argv):
         print("Unable to connect to the server.")
         quit()
 
+    # initially the direction is recieved from the server
+    direction = 0
+    directionstr = client_sock.recv(4).decode('utf-8') # bytestring from client buffer decoded to utf-8 string then to int
+    if directionstr == '':
+        print("Sorry, there is already a game in progress. \nExiting in 3 seconds.")
+        client_sock.close()
+        pygame.quit()
+        pygame.time.wait(3000)
+        quit()    
+
     pygame.init()
     #pygame.font.SysFont(name, size, bold=False, italic=False)
     font1 = pygame.font.SysFont('calibri', 18, True) # font object created
@@ -116,19 +127,9 @@ def main(argv):
     # render/blit background image on window
     window.blit(bg, (0, 0)) # block information transfer, render surface onto another surface
     
-    # initially the direction is recieved from the server
-    direction = 0
-    directionstr = client_sock.recv(4).decode('utf-8') # bytestring from client buffer decoded to utf-8 string then to int
-    if directionstr == '':
-        print("Sorry, there is already a game in progress. \nExiting in 3 seconds.")
-        client_sock.close()
-        pygame.quit()
-        pygame.time.wait(3000)
-        quit()    
-
     direction = int(directionstr)
     snake = Snake_Printer() #object of snake_printer() class
-  
+      
     running = True
     packet_score = ""
     packet_segments = ""
@@ -161,7 +162,9 @@ def main(argv):
         window.blit(bg, (0, 0))
         
         packet = recv_packet(client_sock) # client's socket recieves data from the server script running on the server it connected to
-        
+        if packet == "":
+            break
+
         packet_segments = packet.split('%')
        
         updated_body_lists = packet_segments[1].split('-') #"1,2|3,3|4,3-"

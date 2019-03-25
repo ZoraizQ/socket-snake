@@ -11,13 +11,14 @@ height = 608
 gridfactor = 16 # cell size
 
 status_all = "alive"
-gameInProgress = False
 
 list_of_bodylists = []
 food_list = []
 score_list = []
 
+playersInGame = 0
 last_survivor = 0
+
 
 #bodylist = [[33,11],[12,23],[34,12]]
 #bodystr = "33,11|12,23|34,12"
@@ -145,7 +146,7 @@ class Snake_Tracker():
         return self.body
 
 
-def player_thread(client_sock, client_id): 
+def player_thread(client_sock, client_id, barrier1): 
     # north = 1, south = 2, east = 3, west = 4
     direction = random.randint(1,4) # randomly generate initial direction for now 
     client_sock.send(str(direction).encode('utf-8')) # STRING function .encode(format), BYTESTRING function .decode(format) 
@@ -157,24 +158,23 @@ def player_thread(client_sock, client_id):
     snake_alive = True
     gamestep = 1
     global status_all
-    global gameInProgress
+    global playersInGame
     while status_all == "alive":
-        if gameInProgress and gamestep % random.randint(30,60) == 0:
+        if gamestep % random.randint(30,60) == 0:
             foodx = random.randint(0,int(width/gridfactor))*gridfactor
             foody = random.randint(0,int(height/gridfactor))*gridfactor
             food_list.append([foodx,foody])
         
         directionbstr = client_sock.recv(4)
         if not directionbstr:
-            list_of_bodylists[client_id-1] = []
+            client_sock.close()
             break
-        
         direction = int(directionbstr.decode('utf-8'))
         ''' 4 - buffer size (data to recv from client socket at a time)
         We also had to decode it since data is encoded over a network into bytestrings
         We decode the bytestring recieved into text string with utf-8 encoding. '''
 
-        if snake_alive and gameInProgress:
+        if snake_alive:
             if snake_tracker.update_body(direction) == False:
                 print("Snake %i has collided and died." % snake_tracker.get_id())
                 list_of_bodylists[client_id-1] = []
@@ -189,7 +189,7 @@ def player_thread(client_sock, client_id):
 
         packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1])
         
-        if survivorsCount() == 0 and gameInProgress:
+        if survivorsCount() == 0:
             status_all = "dead" #if list_of_bodylists is empty (survivorsCount), status_all changed from "alive" to "dead"
             winner = -1
             global last_survivor
@@ -206,19 +206,22 @@ def player_thread(client_sock, client_id):
             for s in score_list:
                 final_scores_str += str(s) + '|'
             packet += "%" + final_scores_str[:-1]
-            packet = str(sys.getsizeof(packet)) + "%" + packet
-            client_sock.sendall(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
-            break
-        
+            #barrier2 = threading.Barrier(playersInGame)
+            print("Client " + str(client_id) + " reached the final barrier.", barrier1.parties) # .broken, .parties, .abort(), .reset() . wait()m
+            barrier1.wait(10)            
+
+        gamestep += 1
 
         packet = str(sys.getsizeof(packet)) + "%" + packet
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
-        
-        gamestep += 1
-        time.sleep(0.02) #delay on server end
+        barrier1.wait(10)
+        #time.sleep(0.02) #delay on server end
 
     print("Client %i is disconnecting." % client_id)
-    client_sock.close()
+    list_of_bodylists[client_id-1] = []
+    playersInGame -= 1
+    time.sleep(3)
+    
 
 # server script
 def main(argv):
@@ -236,38 +239,33 @@ def main(argv):
 
     client_id = 1
     numPlayers = len(score_list)  # len(score_list) gives us total number of players currently (0 appended for each)
-
-    threads = []
-    global gameInProgress
-    while True:
-        try:
-            server_sock.listen(requiredPlayers) # server will not start listening also until this parameter has been given
-            client_sock, client_addr = server_sock.accept()  # accepting connection from the server socket gives us both the client's socket and the source address
-            print("Connection from %s" % str(client_addr))
-
-            score_list.append(0)
-            numPlayers = len(score_list) # score list updated each time, since 0 added 
+    sync_barr = threading.Barrier(requiredPlayers)
             
-            if gameInProgress:
-                score_list.pop()
-                client_sock.close()
-                continue
+    threads = []
+    global playersInGame
+    while numPlayers != requiredPlayers:
+        server_sock.listen(requiredPlayers) # server will not start listening also until this parameter has been given
+        client_sock, client_addr = server_sock.accept()  # accepting connection from the server socket gives us both the client's socket and the source address
+        print("Connection from %s" % str(client_addr))
 
-            list_of_bodylists.append([])
-            print("Player %i has connected. Waiting for %i more player(s)." % (client_id, requiredPlayers-len(score_list)))
-            if numPlayers == requiredPlayers:
-                print("Player requirement met. Game beginning.")
-                gameInProgress = True
-            # Start a new thread and return its identifier 
-            t = start_new_thread(player_thread, (client_sock, client_id))
-            threads.append(t)
-            client_id += 1
-        except:
-            print("Quitting server.")
-            quit()
+        score_list.append(0)
+        numPlayers = len(score_list) # score list updated each time, since 0 added 
+
+        list_of_bodylists.append([])
+        # Start a new thread and return its identifier 
+        threads.append(threading.Thread(target=player_thread, args=(client_sock, client_id, sync_barr)))
+        print("Player %i has connected. Waiting for %i more player(s)." % (client_id, requiredPlayers-len(score_list)))   
+        client_id += 1
+
+    print("Player requirement met. Game beginning.")
+    playersInGame = requiredPlayers
+    
+    for t in threads:
+        t.start()
 
     for t in threads:
         t.join()
+
     print("Quitting server.")    
     server_sock.close()
    
