@@ -158,10 +158,19 @@ def player_thread(client_sock, client_id, barrier1):
             foody = random.randint(2,int(height/gridfactor)-2)*gridfactor
             food_list.append([foodx,foody])
         
-        directionbstr = client_sock.recv(1)
-        if not directionbstr:
-            client_sock.close()
+        try:
+            directionbstr = client_sock.recv(1)
+            if not directionbstr:
+                client_sock.shutdown(SHUT_RDWR)
+                list_of_bodylists[client_id-1] = []
+                snake_tracker.set_alive(False)
+                break
+        except socket.error:
+            client_sock.shutdown(SHUT_RDWR)
+            list_of_bodylists[client_id-1] = []
+            snake_tracker.set_alive(False)
             break
+
         direction = int(directionbstr.decode('utf-8'))
         ''' 4 - buffer size (data to recv from client socket at a time)
         We also had to decode it since data is encoded over a network into bytestrings
@@ -206,7 +215,8 @@ def player_thread(client_sock, client_id, barrier1):
         gamestep += 1
 
         packet = str(sys.getsizeof(packet)) + "%" + packet
-        client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
+        time.sleep(0.01)
+        client_sock.sendall(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
         #barrier1.wait(10), 2nd barrier instance to test
     
     ack = client_sock.recv(3)

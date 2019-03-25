@@ -146,6 +146,7 @@ def main(argv):
             # event checking if the red button X is pressed/clicked 
                 print("Forced disconnect. Exiting in 1 second.")
                 pygame.time.wait(1000)
+                client_sock.shutdown()
                 client_sock.close()  # close connection if user quitted
                 pygame.quit()
 
@@ -161,13 +162,19 @@ def main(argv):
         elif keys_dict[pygame.K_RIGHT] == True and direction != 4:
             direction = 3
 
-        client_sock.send(str(direction).encode('utf-8')) # direction sent
+        client_sock.sendall(str(direction).encode('utf-8')) # direction sent
 
         window.blit(bg, (0, 0))
         
-        packet = recv_packet(client_sock) # client's socket recieves data from the server script running on the server it connected to
-        if packet == "":
-            break
+        try:
+            packet = recv_packet(client_sock) # client's socket recieves data from the server script running on the server it connected to
+            if packet == "":
+                break
+        except socket.error:
+            client_sock.shutdown(SHUT_RDWR)
+            client_sock.close()
+            quit()
+
         packet_segments = packet.split('%')
         #print (packet_segments)
 
@@ -217,6 +224,7 @@ def main(argv):
     client_sock.send("ACK".encode('utf-8'))
     print("Game over. Exiting in 3 seconds.")
     pygame.time.wait(3000)
+    client_sock.shutdown(SHUT_RDWR)
     client_sock.close()  # close connection if user quitted
     pygame.quit()
 
