@@ -43,8 +43,10 @@ def recv_packet(c_sock):
     if not testdata:
         return ""
     packet_size = testdata.decode('utf-8') # pick the first 1 byte (normal size of chars)
+    #print(packet_size)
     while "%" not in packet_size:
         packet_size += c_sock.recv(1).decode('utf-8') # recieve 1 byte every time
+        #print(packet_size)
 
     packet_size = int(packet_size[:-1])
     packet = c_sock.recv(packet_size).decode('utf-8')
@@ -88,7 +90,7 @@ class Snake_Printer(): # Snake_Printer class
             wind.blit(self.food_image, food_rect)
 
     def edit_graphics(self, new_part_img): # setter to edit images for the sprites for head and part any time
-        self.part_image = pygame.image.load(new_part_img).convert()
+        self.part_image = pygame.image.load(new_part_img).convert_alpha()
 
 
 
@@ -104,16 +106,18 @@ def main(argv):
         print("Unable to connect to the server.")
         quit()
 
+    print ("Connected.")
     # initially the direction is recieved from the server
     direction = 0
-    directionstr = client_sock.recv(4).decode('utf-8') # bytestring from client buffer decoded to utf-8 string then to int
+    directionstr = client_sock.recv(1).decode('utf-8') # bytestring from client buffer decoded to utf-8 string then to int
     if directionstr == '':
-        print("Sorry, there is already a game in progress. \nExiting in 3 seconds.")
+        print("Sorry, there may already be a game in progress. \nExiting in 3 seconds.")
         client_sock.close()
         pygame.quit()
         pygame.time.wait(3000)
         quit()    
 
+    print("Initializing the game.")
     pygame.init()
     #pygame.font.SysFont(name, size, bold=False, italic=False)
     font1 = pygame.font.SysFont('calibri', 18, True) # font object created
@@ -132,9 +136,9 @@ def main(argv):
       
     running = True
     packet_score = ""
-    packet_segments = ""
+    packet_segments = []
     while running:
-        pygame.time.delay(100) # delay in miliseconds
+        pygame.time.delay(80) # delay in miliseconds
 
         # pygame.event.get(), returns a list of all current I/O events occuring
         for event in pygame.event.get():
@@ -164,9 +168,9 @@ def main(argv):
         packet = recv_packet(client_sock) # client's socket recieves data from the server script running on the server it connected to
         if packet == "":
             break
-
         packet_segments = packet.split('%')
-       
+        #print (packet_segments)
+
         updated_body_lists = packet_segments[1].split('-') #"1,2|3,3|4,3-"
 
         if packet_segments[0] != "":
@@ -187,30 +191,30 @@ def main(argv):
 
         pygame.display.update()  # update screen
 
-        if isStrListEmpty(updated_body_lists):
-            print("All snakes are dead.")
+        if len(packet_segments) > 3:
+            print("Final packet recieved. All snakes are dead.")
             running = False
     
     winner = packet_segments[3]
     displaystr = 'WINNER: PLAYER ' + winner
     if winner == "-1":
-        displaystr = 'ITS A DRAW'
+        displaystr = 'THERE IS NO WINNER'
 
     font2 = pygame.font.SysFont('calibri', gridfactor*3, True)
-    text_surface = font2.render(displaystr, True, (0,0,0))
+    text_surface = font2.render(displaystr, True, (255,255,255))
     bounce_down(window, text_surface, bg)
 
     final_scores = packet_segments[4].split('|')
     
     window.blit(bg, (0, 0))
-    text_surface = font1.render('SCORE LIST', True, (200,0,0))
+    text_surface = font1.render('SCORE LIST', True, (255,69,0))
     window.blit(text_surface, (350, 208))
     for i in range(len(final_scores)):
-        text_surface = font1.render('Player ' + str(i+1) + ": " + final_scores[i], True, (0,0,0))
+        text_surface = font1.render('Player ' + str(i+1) + ": " + final_scores[i], True, (255,255,255))
         window.blit(text_surface, (350, 200+(i+1)*(gridfactor*2)))
     
     pygame.display.update()  # update screen
-
+    client_sock.send("ACK".encode('utf-8'))
     print("Game over. Exiting in 3 seconds.")
     pygame.time.wait(3000)
     client_sock.close()  # close connection if user quitted

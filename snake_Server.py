@@ -10,11 +10,12 @@ width = 800
 height = 608
 gridfactor = 16 # cell size
 
-status_all = "alive"
+all_alive = True
 
 list_of_bodylists = []
 food_list = []
 score_list = []
+snake_tracker_list = []
 
 playersInGame = 0
 last_survivor = 0
@@ -45,10 +46,10 @@ class Snake_Tracker():
     def __init__(self, given_id): # range for random generation
         self.ms = gridfactor # movespeed
         self.id = given_id # player ID, should be either 1/2/3/4, 0 by default -- not set
-
+        self.alive = True
          # range for spawning zones calculated according to width, height
-        head_x = random.randint(int(96/gridfactor), int((width-96)/gridfactor))*gridfactor #lower bound inclusive, upper bound inclusive, in multiples of gridfactor (cell size)
-        head_y = random.randint(int(96/gridfactor), int((height-96)/gridfactor))*gridfactor
+        head_x = random.randint(int(112/gridfactor), int((width-112)/gridfactor))*gridfactor #lower bound inclusive, upper bound inclusive, in multiples of gridfactor (cell size)
+        head_y = random.randint(int(112/gridfactor), int((height-112)/gridfactor))*gridfactor
         print("Snake %i's head spawned at coordinates (%i, %i)" % (self.id, head_x, head_y))
 
         self.body = [[head_x,head_y]]
@@ -62,28 +63,11 @@ class Snake_Tracker():
         #pygame coordinate sys - topleft (0,0) and bottomright (width, height)
         up = -self.ms, down = +self.ms, left = -self.ms, right = +self.ms
         '''
-        prev_head_x = self.body[0][0]
-        prev_head_y = self.body[0][1]
-        prev_part_x = 0
-        prev_part_y = 0
-        temp_x = 0
-        temp_y = 0
-       
-        # updating parts
-        for i in range (1, len(self.body)):  # we could have also used self.length -- the member variable
-            if i == 1:
-                prev_part_x = self.body[i][0]
-                prev_part_y = self.body[i][1]
-                self.body[i][0] = prev_head_x
-                self.body[i][1] = prev_head_y
-            else:
-                temp_x = self.body[i][0]
-                temp_y = self.body[i][1]
-                self.body[i][0] = prev_part_x
-                self.body[i][1] = prev_part_y
-                prev_part_x = temp_x 
-                prev_part_y = temp_y
-                
+        #updating parts
+        prev_body_state = copy.deepcopy(self.body)
+        for i in range(1, len(self.body)):
+            self.body[i] = prev_body_state[i-1] # each part takes place of the part that was before it in its previous state / position (last game step)
+        
         # updating head
         if direction == 4:
             self.body[0][0] -= self.ms
@@ -112,7 +96,7 @@ class Snake_Tracker():
                 break
 
         # checking for head going out of bounds
-        if self.body[0][0] < 0 or self.body[0][0] >= width or self.body[0][1] < 0 or self.body[0][1] >= height:
+        if self.body[0][0] < 16 or self.body[0][0] >= width-16 or self.body[0][1] < 32 or self.body[0][1] >= height-16:
             return False
         elif self.body[0] in self.body[1:]: #your head collides with your own body part
             return False
@@ -123,8 +107,12 @@ class Snake_Tracker():
             if snakei_list == []: # ignore empty lists
                 continue
             if self.body[0] == snakei_list[0]:
-                print("Head-on collision")
+                print("Head-on collision of snake %i and %i." % (self.id, i+1))
                 list_of_bodylists[i] = []
+                for st in snake_tracker_list:
+                    if st.get_id() == i+1:
+                        st.set_alive(False)
+                        # set body empty maybe also
                 global last_survivor
                 last_survivor = 0
                 return False
@@ -142,6 +130,12 @@ class Snake_Tracker():
     def get_id(self):
         return self.id
 
+    def set_alive(self, new_alive):
+        self.alive = new_alive
+
+    def get_alive(self):
+        return self.alive
+
     def get_body(self): #[[30,40],[20,10],[30,90]]
         return self.body
 
@@ -151,21 +145,20 @@ def player_thread(client_sock, client_id, barrier1):
     direction = random.randint(1,4) # randomly generate initial direction for now 
     client_sock.send(str(direction).encode('utf-8')) # STRING function .encode(format), BYTESTRING function .decode(format) 
     snake_tracker = Snake_Tracker(client_id)
-
+    snake_tracker_list.append(snake_tracker)
     #snake_tracker.update_body(direction) # update list once
     list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body())
 
-    snake_alive = True
     gamestep = 1
-    global status_all
+    global all_alive
     global playersInGame
-    while status_all == "alive":
+    while all_alive:
         if gamestep % random.randint(30,60) == 0:
-            foodx = random.randint(0,int(width/gridfactor))*gridfactor
-            foody = random.randint(0,int(height/gridfactor))*gridfactor
+            foodx = random.randint(2,int(width/gridfactor)-1)*gridfactor
+            foody = random.randint(1,int(height/gridfactor)-1)*gridfactor
             food_list.append([foodx,foody])
         
-        directionbstr = client_sock.recv(4)
+        directionbstr = client_sock.recv(1)
         if not directionbstr:
             client_sock.close()
             break
@@ -174,11 +167,11 @@ def player_thread(client_sock, client_id, barrier1):
         We also had to decode it since data is encoded over a network into bytestrings
         We decode the bytestring recieved into text string with utf-8 encoding. '''
 
-        if snake_alive:
+        if snake_tracker.get_alive():
             if snake_tracker.update_body(direction) == False:
                 print("Snake %i has collided and died." % snake_tracker.get_id())
                 list_of_bodylists[client_id-1] = []
-                snake_alive = False
+                snake_tracker.set_alive(False)
             else:
                 list_of_bodylists[client_id-1] = copy.deepcopy(snake_tracker.get_body()) # [[30,40],[20,10],[30,90]]
         
@@ -190,7 +183,7 @@ def player_thread(client_sock, client_id, barrier1):
         packet = str_from_list(food_list) + "%" + list_of_bodylists_str + "%" + str(score_list[client_id-1])
         
         if survivorsCount() == 0:
-            status_all = "dead" #if list_of_bodylists is empty (survivorsCount), status_all changed from "alive" to "dead"
+            all_alive = False #if list_of_bodylists is empty (survivorsCount), all_alive changed from True to False
             winner = -1
             global last_survivor
             if last_survivor == 0:
@@ -208,20 +201,26 @@ def player_thread(client_sock, client_id, barrier1):
             packet += "%" + final_scores_str[:-1]
             #barrier2 = threading.Barrier(playersInGame)
             print("Client " + str(client_id) + " reached the final barrier.", barrier1.parties) # .broken, .parties, .abort(), .reset() . wait()m
-            barrier1.wait(10)            
+            barrier1.wait(10)
 
         gamestep += 1
 
         packet = str(sys.getsizeof(packet)) + "%" + packet
         client_sock.send(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
-        barrier1.wait(10)
-        #time.sleep(0.02) #delay on server end
+        #barrier1.wait(10), 2nd barrier instance to test
+    
+    ack = client_sock.recv(3)
+    while not ack:
+        print("Still waiting for final acknowledgement from client %i" % client_id)
+        if ack.decode('utf-8') == "ACK":
+            print("ACK recieved.")
+            break
 
     print("Client %i is disconnecting." % client_id)
     list_of_bodylists[client_id-1] = []
     playersInGame -= 1
     time.sleep(3)
-    
+
 
 # server script
 def main(argv):
