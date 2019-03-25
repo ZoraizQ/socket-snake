@@ -122,8 +122,6 @@ def main(argv):
         client_sock.close()
         quit()
 
-    print ("Connected.")
-
     print("Initializing the game.")
     pygame.init()
     #pygame.font.SysFont(name, size, bold=False, italic=False)
@@ -179,6 +177,7 @@ def main(argv):
             if packet == "":
                 break
         except socket.error:
+            cout << "Failed to recieve packet."
             client_sock.shutdown(2)
             client_sock.close()
             quit()

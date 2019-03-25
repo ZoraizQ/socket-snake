@@ -218,7 +218,7 @@ def player_thread(client_sock, client_id, barrier1):
         gamestep += 1
 
         packet = str(sys.getsizeof(packet)) + "%" + packet
-        time.sleep(0.01)
+        time.sleep(0.005)
         client_sock.sendall(packet.encode('utf-8')) # send list of body list strings in string form, encoded to bytestring
         #barrier1.wait(10), 2nd barrier instance to test
     
