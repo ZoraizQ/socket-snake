@@ -2,9 +2,9 @@
 
 ##### Client-server architecture based multiplayer snake game using socket and pygame
 
-![s2](ss\s2.png)
+![s2](ss/s2.png)
 
-![s1](ss\s1.png)
+![s1](ss/s1.png)
 
 ### Features
 
@@ -14,11 +14,11 @@
 
 - Animated winner announcement at the end of the round, when the last surviving snake dies. 
 
-  ![s3](ss\s3.png)
+  ![s3](ss/s3.png)
 
 - Leaderboard of scores for the game for all players displayed.
 
-  ![s4](ss\s4.png)
+  ![s4](ss/s4.png)
 
 - Handles disconnection logic as well, so that the game is unaffected by disconnecting players and the room can be reused.
 - Prevents players from connecting to the room during an ongoing game. 
