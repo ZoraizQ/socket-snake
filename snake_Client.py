@@ -96,7 +96,9 @@ class Snake_Printer(): # Snake_Printer class
 
 def main(argv):
     server_ip, server_port = argv[0], int(argv[1])  # host server's ip and server's port
-
+    if server_ip == "":
+        server_ip = "127.0.0.1"
+        
     try:
         client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print("Attempting to connect to %s on port %i." % (server_ip, server_port))
