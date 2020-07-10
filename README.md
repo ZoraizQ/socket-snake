@@ -1,6 +1,6 @@
 # Socket-Snake
 
-##### Client-server architecture based multiplayer snake game using socket and pygame
+##### Client-server architecture based multiplayer snake-game using socket and pygame
 
 ![s2](ss/s2.png)
 
